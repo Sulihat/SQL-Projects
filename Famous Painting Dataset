@@ -1,0 +1,244 @@
+
+Create database famous_paintings;
+use famous_paintings;
+Create table artist
+(artist_id int primary key, 
+full_name text, 
+nationality text, 
+style text, 
+birth int, 
+death int); 
+
+
+create table image_link
+(work_id int, 
+url varchar (2000),
+thumbnail_small_url varchar (2000), thumbnail_large_url varchar (2000));
+Load data infile 'image_link.csv' into table image_link
+Fields terminated by ','
+ignore 1 lines;
+select @@secure_file_priv;
+select * from image_link;
+
+Load data infile 'artist.csv' into table artist
+Fields terminated by ','
+ignore 1 lines;
+
+create table canvas_size
+(size_id int,
+width int,
+height int,
+label varchar (1000));
+
+Load data infile 'canvas_size.csv' into table canvas_size
+Fields terminated by ','
+ignore 1 lines;
+
+create table museum
+(museum_id int, 
+name varchar (2000),
+address varchar (2000) , 
+city varchar (2000),
+state varchar (2000) ,
+postal varchar (2000) ,
+country varchar (2000),
+phone varchar (2000),
+url varchar (2000));
+
+
+
+Load data infile 'museum.csv' into table museum
+Fields terminated by ','
+optionally enclosed by '"'
+escaped by '/'
+ignore 1 lines;
+
+create table museum_hours
+( museum_id int,
+day text,
+open time,
+close time);
+
+Load data infile 'museum_hours.csv' into table museum_hours
+Fields terminated by ','
+ignore 1 lines;
+select * from museum_hours;
+
+create table product_size
+(work_id int,
+size_id int NULL,
+sale_price int,
+regular_price int);
+
+Load data infile 'product_size.csv' into table product_size
+Fields terminated by ','
+ignore 1 lines;
+
+create table subject
+(work_id int,
+subject varchar (255));
+
+Load data infile 'subject.csv' into table subject
+Fields terminated by ','
+ignore 1 lines;
+
+create table work
+(work_id int,
+name varchar (255),
+artist_id int null,
+style text ,
+museum_id int null);
+
+Load data infile 'work.csv' into table work
+Fields terminated by ','
+optionally enclosed by '"'
+ignore 1 lines;
+
+SET sql_mode = '';
+select * from museum
+
+-- QUESTION 1: Fetch all the paintings which are not displayed on any museums?
+;
+select work_id, name, museum_id from work
+where museum_id = 0
+
+-- Question 2: Are there museuems without any paintings?
+;
+select work.work_id, work.name, museum.museum_id, museum.name 
+from work
+left join museum
+on work.museum_id=museum.museum_id
+where work_id =null
+-- No, all museums are with paintings
+;
+
+-- QUESTION 3: How many paintings have an asking price of more than their regular price? 
+;
+
+-- QUESTION 4: Identify the paintings whose asking price is less than 50% of its regular price
+select * from product_size
+where sale_price < (regular_price*0.5);
+
+-- QUESTION 5: Which canva size costs the most?
+select canvas_size.size_id, canvas_size.label, product_size.sale_price, product_size.regular_price 
+from canvas_size
+left join product_size
+on canvas_size.size_id=product_size.size_id
+order by product_size.regular_price DESC
+LIMIT 1;
+
+-- QUESTION 6: Identify the museums with invalid city information in the given dataset
+select * from museum
+where city regexp '^[0-9]';
+
+-- QUESTION 7: Fetch the top 10 most famous painting subject
+select subject, count(work_id) from subject
+group by subject
+order by count(work_id) desc
+limit 10
+
+-- QUESTION 8: Identify the museums which are open on both Sunday and Monday. Display museum name, city
+;
+select museum.name, museum.city, museum_hours.day
+from museum
+left join museum_hours
+on museum.museum_id=museum_hours.museum_id
+where day='sunday'
+union (select museum.name, museum.city, museum_hours.day
+from museum
+left join museum_hours
+on museum.museum_id=museum_hours.museum_id
+where day='monday');
+
+-- QUESTION 9: How many museums are open every single day?
+SELECT museum.museum_id, museum.name, count(museum_hours.day)
+FROM museum
+join museum_hours
+on museum.museum_id=museum_hours.museum_id
+group by museum.museum_id, museum.name
+having count(museum_hours.day)=7
+
+-- QUESTION 10: Which are the top 5 most popular museum? (Popularity is defined based on most no of paintings in a museum)
+;
+select museum.name, count(work.work_id) as number_of_paintings
+from museum
+join work
+on museum.museum_id=work.museum_id
+group by museum.name
+order by count(work.work_id) desc
+limit 5;
+
+-- QUESTION 11: Who are the top 5 most popular artist? (Popularity is defined based on most no of paintings done by an artist)
+;
+SELECT artist.full_name, count(work.work_id) as no_of_paintings
+from artist
+left join work
+on artist.artist_id=work.work_id
+group by artist.full_name
+order by count(work.work_id) desc
+limit 5;
+
+-- QUESTION 12:  Display the 3 least popular canva sizes
+SELECT canvas_size.label, count(product_size.work_id) No_of_paintings
+from canvas_size
+join product_size
+on canvas_size.size_id=product_size.size_id
+group by canvas_size.label
+order by label 
+limit 3;
+
+-- QUESTION 13: Which museum is open for the longest during a day. Dispay museum name, state and hours open and which day?
+;
+select museum.name, museum.state, timedIFF(museum_hours.close , museum_hours.open) AS hours_open, museum_hours.day
+from museum
+left join museum_hours
+on museum.museum_id=museum_hours.museum_id
+group by museum.name, museum.state, museum_hours.day;
+
+-- QUESTION 14: Which museum has the most no of most popular painting style?
+select museum.name, work.style, count(work.style) as number_of_painting_style
+from museum
+join work
+on museum.museum_id=work.museum_id
+group by museum.name, work.style
+order by count(work.style) desc
+limit 1;
+
+-- QUESTION 15: Identify the artists whose paintings are displayed in multiple countries
+
+select artist.full_name, count(museum.country) no_of_countries
+from artist
+join work 
+on artist.artist_id=work.artist_id
+join museum
+on work.museum_id=museum.museum_id
+Group by artist.full_name
+Having count(museum.country)>1
+order by 2 DESC;
+
+-- QUESTION 16: Display the country and the city with most no of museums. Output 2 seperate columns to mention the city and country. If there are multiple value, seperate them with comma.
+select country, city, count(museum_id) from museum
+group by country, city
+order  by 3 desc
+
+-- QUESTION 17:  Which country has the 5th highest no of paintings?
+;
+select museum.country, count(work.work_id) no_of_paintings
+from museum
+join work 
+on museum.museum_id=work.museum_id
+group by museum.country
+order by count(work.work_id) desc
+limit 5
+offset 4;
+
+-- QUESTION 18: Which artist has the most no of Portraits paintings outside USA?. Display artist name, no of paintings and the artist nationality.
+select artist.full_name, museum.country, count(work.work_id) no_of_paintings
+from artist
+join work
+on artist.artist_id=work.artist_id
+join museum
+on work.museum_id=museum.museum_id
+group by 1,2
+Having museum.country != 'USA'
+order by 3 desc
