@@ -1,6 +1,7 @@
 
 Create database famous_paintings;
 use famous_paintings;
+
 Create table artist
 (artist_id int primary key, 
 full_name text, 
@@ -9,18 +10,16 @@ style text,
 birth int, 
 death int); 
 
+Load data infile 'artist.csv' into table artist
+Fields terminated by ','
+ignore 1 lines;
 
 create table image_link
 (work_id int, 
 url varchar (2000),
 thumbnail_small_url varchar (2000), thumbnail_large_url varchar (2000));
-Load data infile 'image_link.csv' into table image_link
-Fields terminated by ','
-ignore 1 lines;
-select @@secure_file_priv;
-select * from image_link;
 
-Load data infile 'artist.csv' into table artist
+Load data infile 'image_link.csv' into table image_link
 Fields terminated by ','
 ignore 1 lines;
 
@@ -44,8 +43,6 @@ postal varchar (2000) ,
 country varchar (2000),
 phone varchar (2000),
 url varchar (2000));
-
-
 
 Load data infile 'museum.csv' into table museum
 Fields terminated by ','
@@ -94,9 +91,6 @@ Fields terminated by ','
 optionally enclosed by '"'
 ignore 1 lines;
 
-SET sql_mode = '';
-select * from museum
-
 -- QUESTION 1: Fetch all the paintings which are not displayed on any museums?
 ;
 select work_id, name, museum_id from work
@@ -109,7 +103,6 @@ from work
 left join museum
 on work.museum_id=museum.museum_id
 where work_id =null
--- No, all museums are with paintings
 ;
 
 -- QUESTION 3: How many paintings have an asking price of more than their regular price? 
